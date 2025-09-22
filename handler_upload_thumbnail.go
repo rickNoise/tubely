@@ -1,10 +1,14 @@
 package main
 
 import (
-	"encoding/base64"
+	"bytes"
 	"fmt"
 	"io"
+	"mime"
 	"net/http"
+	"os"
+	"path"
+	"path/filepath"
 
 	"github.com/bootdotdev/learn-file-storage-s3-golang-starter/internal/auth"
 	"github.com/google/uuid"
@@ -72,14 +76,33 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	// Encode image as base64 string and store in DB as ThumbnailURL
-	thumbnailImageString := base64.StdEncoding.EncodeToString(imageData)
-	newThumbnailUrl := fmt.Sprintf(
-		"data:%s;base64,%s",
-		mediaType,
-		thumbnailImageString,
+	// Save the bytes to a file at the path /assets/<videoID>.<file_extension>
+	fileExtension := getImageExtension(mediaType)
+	fileName := videoID.String() + fileExtension
+	destinationPath := filepath.Join(cfg.assetsRoot, fileName)
+	savedFile, err := os.Create(destinationPath)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "image could not be saved to destination path", err)
+		return
+	}
+	defer savedFile.Close()
+
+	imageDataReader := bytes.NewReader(imageData)
+	_, err = io.Copy(savedFile, imageDataReader)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "image could not be saved to destination path", err)
+		return
+	}
+
+	// Update the thumbnail_url. Notice that in main.go we have a file server that serves files from the /assets directory.
+	urlPath := path.Join("/assets", fileName)
+	newURL := fmt.Sprintf(
+		"http://localhost:%s%s",
+		cfg.port,
+		urlPath,
 	)
-	videoMetadata.ThumbnailURL = &newThumbnailUrl
+	videoMetadata.ThumbnailURL = &newURL
+
 	err = cfg.db.UpdateVideo(videoMetadata)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Could not update video metadata with new video thumbnail image", err)
@@ -88,4 +111,15 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 
 	// Respond with updated JSON of the video's metadata. Use the provided respondWithJSON function and pass it the updated database.Video struct to marshal.
 	respondWithJSON(w, http.StatusOK, videoMetadata)
+}
+
+func getImageExtension(contentType string) string {
+	// Get all extensions for this content type
+	exts, err := mime.ExtensionsByType(contentType)
+	if err != nil || len(exts) == 0 {
+		return ".bin"
+	}
+
+	// Return the first (most common) extension
+	return exts[0]
 }
