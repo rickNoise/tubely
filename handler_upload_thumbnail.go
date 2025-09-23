@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"crypto/rand"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"mime"
@@ -38,7 +40,7 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 
 	fmt.Println("uploading thumbnail for video", videoID, "by user", userID)
 
-	// TODO: implement the upload here
+	// Implement the upload here
 	const maxMemory = 10 << 20
 	err = r.ParseMultipartForm(maxMemory)
 	if err != nil {
@@ -80,9 +82,13 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	// Save the bytes to a file at the path /assets/<videoID>.<file_extension>
+	// Save the bytes to a file at the path /assets/<random base64 string>.<file_extension>
+	randBytes := make([]byte, 32) // Note that no error handling is necessary, as Read always succeeds.
+	rand.Read(randBytes)
+	randVideoPath := base64.RawURLEncoding.EncodeToString(randBytes)
+
 	fileExtension := getImageExtension(mediaType)
-	fileName := videoID.String() + fileExtension
+	fileName := randVideoPath + fileExtension
 	destinationPath := filepath.Join(cfg.assetsRoot, fileName)
 	savedFile, err := os.Create(destinationPath)
 	if err != nil {
