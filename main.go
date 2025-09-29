@@ -94,7 +94,6 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed loading aws s3 config: %v", err)
 	}
-
 	s3Client := s3.NewFromConfig(awsCfg)
 
 	cfg := apiConfig{
