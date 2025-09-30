@@ -104,6 +104,21 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	// Prefix filename with aspect ratio identifier
+	aspectRatioString, err := getVideoAspectRatio(tempFile.Name())
+	if err != nil {
+		aspectRatioString = "other"
+	}
+	var aspectRatioPrefix string
+	switch aspectRatioString {
+	case "16:9":
+		aspectRatioPrefix = "landscape"
+	case "9:16":
+		aspectRatioPrefix = "portrait"
+	default:
+		aspectRatioPrefix = "other"
+	}
+
 	// Put the object into S3 using PutObject
 	ext := filepath.Ext(header.Filename)
 	if ext == "" {
@@ -115,7 +130,7 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
 		respondWithError(w, http.StatusInternalServerError, "error uploading", err)
 		return
 	}
-	fileKey := hex.EncodeToString(randomBytes) + ext
+	fileKey := aspectRatioPrefix + "/" + hex.EncodeToString(randomBytes) + ext
 
 	putObjectInput := s3.PutObjectInput{
 		Bucket:      &cfg.s3Bucket,
