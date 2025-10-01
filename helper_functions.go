@@ -65,6 +65,5 @@ func processVideoForFastStart(filePath string) (string, error) {
 		return "", fmt.Errorf("failed to run ffmpeg command: %w", err)
 	}
 
-	fmt.Printf("successfully ran ffmpeg command, output: %v\n", out.String())
 	return outputFilePath, nil
 }
