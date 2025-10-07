@@ -164,8 +164,8 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
 	// Store bucket and key as a comma delimited string in the video_url. E.g. tube-private-12345,portrait/vertical.mp4
 	updatedVideoURL := fmt.Sprintf(
 		"%s,%s",
-		cfg.s3Bucket,
-		fileKey,
+		strings.TrimSpace(cfg.s3Bucket),
+		strings.TrimSpace(fileKey),
 	)
 	videoMetadata.VideoURL = &updatedVideoURL
 	err = cfg.db.UpdateVideo(videoMetadata)
@@ -180,6 +180,7 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	fmt.Printf("successfully uploaded video at URL: %s\n", *signedVideo.VideoURL)
 	respondWithJSON(w, http.StatusOK, signedVideo)
 }
 
@@ -202,9 +203,17 @@ func generatePresignedURL(s3Client *s3.Client, bucket, key string, expireTime ti
 }
 
 func (cfg *apiConfig) dbVideoToSignedVideo(video database.Video) (database.Video, error) {
+	// case where video_url is nil
+	if video.VideoURL == nil {
+		return video, nil
+	}
+
 	presignExpiry := 10 * time.Minute
 
 	splitVideoURL := strings.SplitN(*video.VideoURL, ",", 2)
+	if len(splitVideoURL) != 2 {
+		return database.Video{}, fmt.Errorf("invalid video URL format: %v", *video.VideoURL)
+	}
 	bucket := splitVideoURL[0]
 	key := splitVideoURL[1]
 	if bucket == "" || key == "" {
