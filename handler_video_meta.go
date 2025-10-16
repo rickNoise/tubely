@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"github.com/bootdotdev/learn-file-storage-s3-golang-starter/internal/auth"
@@ -96,13 +95,7 @@ func (cfg *apiConfig) handlerVideoGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	signedVideo, err := cfg.dbVideoToSignedVideo(video)
-	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "failed to presign video URL", err)
-		return
-	}
-
-	respondWithJSON(w, http.StatusOK, signedVideo)
+	respondWithJSON(w, http.StatusOK, video)
 }
 
 func (cfg *apiConfig) handlerVideosRetrieve(w http.ResponseWriter, r *http.Request) {
@@ -121,17 +114,6 @@ func (cfg *apiConfig) handlerVideosRetrieve(w http.ResponseWriter, r *http.Reque
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Couldn't retrieve videos", err)
 		return
-	}
-
-	for i, video := range videos {
-		signedVideo, err := cfg.dbVideoToSignedVideo(video)
-		if err != nil {
-			// keep original video (likely has nil/unspecified URL) and continue
-			// log both the ID and the error
-			fmt.Printf("failed to sign video id=%s: %v\n", video.ID, err)
-			continue
-		}
-		videos[i] = signedVideo
 	}
 
 	respondWithJSON(w, http.StatusOK, videos)

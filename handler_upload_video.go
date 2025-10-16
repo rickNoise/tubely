@@ -157,13 +157,20 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// videoMetadata.VideoURL = &updatedVideoURL
+	distributionDomainName := cfg.s3CfDistribution
+	updatedVideoURL := fmt.Sprintf(
+		"https://%s/%s",
+		distributionDomainName,
+		fileKey,
+	)
+	videoMetadata.VideoURL = &updatedVideoURL
+
 	err = cfg.db.UpdateVideo(videoMetadata)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "failed updating file metadata", err)
 		return
 	}
 
-	fmt.Printf("successfully uploaded video at URL: %s\n", *signedVideo.VideoURL)
-	respondWithJSON(w, http.StatusOK, signedVideo)
+	fmt.Printf("successfully uploaded video at URL: %s\n", updatedVideoURL)
+	respondWithJSON(w, http.StatusOK, videoMetadata)
 }
